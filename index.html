@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZATCA Billing Hub - مؤسسة ركن شرق الغربية</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        
+        /* High-Fidelity CSS Print Specific Architecture Media Rules */
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            #print-document-capture-target,
+            #receipt-print-target {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: auto !important;
+            }
+            /* Explicit sheet sizing directives */
+            @page {
+                size: A4 portrait;
+                margin: 8mm;
+            }
+        }
+        
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen antialiased">
+
+    <div x-data="{ activeMode: 'invoice' }" class="min-h-screen">
+
+        <!-- Mode Switcher -->
+        <div class="container mx-auto px-4 pt-6 max-w-7xl no-print">
+            <div class="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1.5 w-fit mx-auto shadow-xl">
+                <button @click="activeMode = 'invoice'" :class="activeMode === 'invoice' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'text-slate-400 hover:text-white'" class="px-5 py-2 rounded-lg text-sm font-bold transition-all duration-200 cursor-pointer">
+                    📄 Invoice System
+                </button>
+                <button @click="activeMode = 'receipt'" :class="activeMode === 'receipt' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'text-slate-400 hover:text-white'" class="px-5 py-2 rounded-lg text-sm font-bold transition-all duration-200 cursor-pointer">
+                    🧾 Receipt Voucher
+                </button>
+            </div>
+        </div>
+
+        <!-- INVOICE SYSTEM SECTION -->
+        <div x-show="activeMode === 'invoice'" x-cloak>
+    <div x-data="invoiceSystem()" x-init="init()" class="container mx-auto px-4 py-6 max-w-7xl">
+        
+        <header class="mb-6 border-b border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
+            <div>
+                <h1 class="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                    <span class="bg-amber-500 text-slate-950 px-2 py-0.5 rounded text-xl font-black">E</span>
+                    <span x-text="seller.nameAr || 'Billing Hub'"></span> <span class="text-xs font-normal text-slate-400 block sm:inline sm:ml-2">System Terminal</span>
+                </h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <button @click="generatePDF()" :disabled="!isValid" class="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 font-bold text-slate-950 px-5 py-2 rounded-lg text-sm shadow-lg transition duration-150 cursor-pointer">
+                    📥 Download PDF Invoice
+                </button>
+            </div>
+        </header>
+
+        <div class="grid lg:grid-cols-12 gap-6">
+            
+            <div class="lg:col-span-4 space-y-4 no-print">
+                
+                <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl space-y-4">
+                    <div>
+                        <h2 class="text-sm font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            📝 Invoice Meta Settings
+                        </h2>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Invoice Number</label>
+                                <input type="text" x-model="systemGenerated.invoiceNum" @input="updateInvoiceState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Invoice Date</label>
+                                <input type="text" x-model="systemGenerated.displayDate" @input="updateInvoiceState()" placeholder="DD/MM/YYYY" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-700 pt-3">
+                        <h2 class="text-sm font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            🏢 Seller / Business Information
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Company Name (AR)</label>
+                                    <input type="text" x-model="seller.nameAr" @input="updateInvoiceState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500" dir="rtl">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Company Name (EN)</label>
+                                    <input type="text" x-model="seller.nameEn" @input="updateInvoiceState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">National Address</label>
+                                <input type="text" x-model="seller.address" @input="updateInvoiceState()" placeholder="Building No, Street, District, City" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">CR Number</label>
+                                    <input type="text" x-model="seller.cr" @input="updateInvoiceState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">TRN Number</label>
+                                    <input type="text" x-model="seller.trn" @input="updateInvoiceState()" placeholder="3xxxxxxxxxxxxxx" maxlength="15" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-700 pt-3 mt-4">
+                        <h2 class="text-sm font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            👤 Buyer / Client Information
+                        </h2>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Buyer Business Name</label>
+                                <input type="text" x-model="buyer.name" @input="updateInvoiceState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">National Address</label>
+                                <input type="text" x-model="buyer.address" @input="updateInvoiceState()" placeholder="Building No, Street, District, City" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">CR Number</label>
+                                    <input type="text" x-model="buyer.cr" @input="updateInvoiceState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">TRN Number</label>
+                                    <input type="text" x-model="buyer.trn" @input="updateInvoiceState()" placeholder="3xxxxxxxxxxxxxx" maxlength="15" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-sm font-bold text-amber-400 uppercase tracking-wider">📦 Invoice Line Items</h2>
+                        <button type="button" @click="addItem()" class="text-[11px] bg-blue-600 hover:bg-blue-700 text-white font-medium px-2 py-1 rounded transition cursor-pointer">
+                            + Add Item
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                        <template x-for="(item, index) in items" :key="index">
+                            <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 space-y-2 relative">
+                                <button type="button" @click="removeItem(index)" class="absolute top-1 right-2 text-red-400 hover:text-red-500 text-xs font-bold cursor-pointer">&times;</button>
+                                
+                                <input type="text" x-model="item.name" @input="updateInvoiceState()" placeholder="Item Name / Product Description" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
+                                
+                                <div class="grid grid-cols-4 gap-1.5">
+                                    <div>
+                                        <label class="block text-[9px] text-slate-400 uppercase">Qty</label>
+                                        <input type="number" x-model.number="item.qty" @input="updateInvoiceState()" min="1" class="w-full bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-xs text-white text-center">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[9px] text-slate-400 uppercase">Unit</label>
+                                        <input type="text" x-model="item.unit" @input="updateInvoiceState()" placeholder="Pcs" class="w-full bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-xs text-white text-center">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[9px] text-slate-400 uppercase">Price/Unit</label>
+                                        <input type="number" x-model.number="item.price" @input="updateInvoiceState()" step="0.01" class="w-full bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-xs text-white text-right">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[9px] text-amber-400 uppercase">Disc (SAR)</label>
+                                        <input type="number" x-model.number="item.discount" @input="updateInvoiceState()" step="0.01" min="0" placeholder="0" class="w-full bg-slate-800 border border-amber-600/50 rounded px-1 py-0.5 text-xs text-white text-right">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8 flex flex-col items-center">
+                
+                <div id="print-document-capture-target" class="bg-white text-slate-900 p-6 shadow-2xl rounded-sm overflow-x-auto select-text text-[11px]" style="width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                    
+                    <div class="grid grid-cols-2 items-center border-b-2 border-slate-900 pb-3 mb-4 gap-2">
+                        <div class="text-left">
+                            <h3 class="text-3xl font-black text-slate-900 tracking-tight m-0 font-[Arial-Bold] whitespace-nowrap" style="font-weight: 900;" x-text="seller.nameAr"></h3>
+                        </div>
+                        <div class="text-right whitespace-nowrap">
+                            <h3 class="text-xl font-black text-slate-900 tracking-tight m-0" x-text="seller.nameEn"></h3>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center border border-slate-300 rounded-lg p-3 bg-slate-50 mb-4">
+                        <div class="text-left">
+                            <div class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Invoice No</div>
+                            <div x-text="systemGenerated.invoiceNum" class="font-mono font-black text-slate-900 text-sm"></div>
+                        </div>
+                        <div class="text-center">
+                            <h1 class="text-3xl font-black tracking-widest text-slate-900 m-0 leading-tight">فاتورة ضريبية</h1>
+                            <h2 class="text-xs font-bold text-slate-500 tracking-wider uppercase m-0">Tax Invoice</h2>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Date</div>
+                            <div class="font-mono font-bold text-slate-900 text-xs" x-text="systemGenerated.displayDate"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-12 gap-4 border border-slate-300 rounded-lg p-3 text-[11px] mb-4 bg-slate-50">
+                        <div class="col-span-6 space-y-1">
+                            <div class="font-bold text-blue-900 text-xs border-b border-slate-200 pb-0.5 mb-1">
+                                <span>Buyer Details</span>
+                            </div>
+                            <div><span class="font-bold text-slate-800">Client Name:</span> <span x-text="buyer.name || '—'" class="font-bold text-slate-900 text-sm"></span></div>
+                            <div><span class="font-semibold text-slate-700">Address:</span> <span x-text="buyer.address || '—'" class="text-slate-900"></span></div>
+                            <div><span class="font-semibold text-slate-700">CR Number:</span> <span x-text="buyer.cr || '—'" class="font-mono text-slate-900"></span></div>
+                            <div><span class="font-bold text-slate-800">TRN Number:</span> <span x-text="buyer.trn || '—'" class="font-mono font-bold text-slate-900 tracking-wide"></span></div>
+                        </div>
+
+                        <div class="col-span-6 space-y-1 border-l border-slate-200 pl-4">
+                            <div class="font-bold text-blue-900 text-xs border-b border-slate-200 pb-0.5 mb-1">
+                                <span>Seller Details</span>
+                            </div>
+                            <div><span class="font-bold text-slate-800">Company Name:</span> <span class="font-bold text-slate-900 text-sm" x-text="seller.nameAr || seller.nameEn"></span></div>
+                            <div><span class="font-semibold text-slate-700">Address:</span> <span class="text-slate-900" x-text="seller.address"></span></div>
+                            <div><span class="font-semibold text-slate-700">CR Number:</span> <span x-text="seller.cr" class="font-mono text-slate-900"></span></div>
+                            <div><span class="font-bold text-slate-800">TRN Number:</span> <span x-text="seller.trn" class="font-mono font-bold text-slate-900 tracking-wide"></span></div>
+                        </div>
+                    </div>
+
+                    <table class="w-full text-[10px] text-left border-collapse border border-slate-300 mb-4">
+                        <thead>
+                            <tr class="bg-slate-900 text-white font-bold text-center">
+                                <th class="border border-slate-300 p-1.5 text-center w-6">#</th>
+                                <th class="border border-slate-300 p-1.5 text-center">Item Name / بيان السلع</th>
+                                <th class="border border-slate-300 p-1.5 text-center w-12">Qty</th>
+                                <th class="border border-slate-300 p-1.5 text-center w-12">Unit</th>
+                                <th class="border border-slate-300 p-1.5 text-center w-20">Price</th>
+                                <th class="border border-slate-300 p-1.5 text-center w-16 text-amber-400 bg-slate-800 font-bold">Discount</th>
+                                <th class="border border-slate-300 p-1.5 text-center w-20">Taxable</th>
+                                <th class="border border-slate-300 p-1.5 text-center w-20">VAT Amt</th>
+                                <th class="border border-slate-300 p-1.5 text-center w-24">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-slate-800">
+                            <template x-for="(item, idx) in items" :key="idx">
+                                <tr class="text-center">
+                                    <td class="border border-slate-300 p-1.5 text-center font-mono" x-text="idx + 1"></td>
+                                    <td class="border border-slate-300 p-1.5 text-left font-medium text-slate-900" x-text="item.name || '—'"></td>
+                                    <td class="border border-slate-300 p-1.5 font-mono" x-text="item.qty"></td>
+                                    <td class="border border-slate-300 p-1.5 text-slate-600" x-text="item.unit || 'Pcs'"></td>
+                                    <td class="border border-slate-300 p-1.5 text-right font-mono" x-text="formatNum(item.price)"></td>
+                                    <td class="border border-slate-300 p-1.5 text-right font-mono text-amber-700 bg-amber-50/40 font-bold" x-text="formatNum(item.discount || 0)"></td>
+                                    <td class="border border-slate-300 p-1.5 text-right font-mono text-slate-700" x-text="formatNum((item.qty * item.price) - (parseFloat(item.discount) || 0))"></td>
+                                    <td class="border border-slate-300 p-1.5 text-right font-mono text-slate-700" x-text="formatNum(((item.qty * item.price) - (parseFloat(item.discount) || 0)) * 0.15)"></td>
+                                    <td class="border border-slate-300 p-1.5 text-right font-bold font-mono text-slate-900" x-text="formatNum(((item.qty * item.price) - (parseFloat(item.discount) || 0)) * 1.15)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+
+                    <div class="grid grid-cols-12 gap-4 items-start mb-6">
+                        <div class="col-span-7 space-y-3">
+                            <div class="flex items-start gap-3">
+                                <div class="p-2 border border-slate-200 rounded-md bg-white shadow-sm inline-block shrink-0">
+                                    <div id="zatca-embedded-qr-node"></div>
+                                </div>
+                                
+                                <div class="text-[10px] text-slate-700 italic bg-slate-50 border border-slate-200 rounded p-2 flex-1 min-h-[123px]">
+                                    <span class="font-bold text-slate-800 block text-[9px] uppercase tracking-wider not-italic text-slate-400 mb-0.5">Invoice Amount in Words / المبلغ المكتوب</span>
+                                    <span class="font-medium text-slate-900" x-text="convertNumberToWords(financials.grandTotal) + ' Saudi Riyals and Zero Halalas Only.'"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="text-[10px] text-slate-700 bg-slate-50 p-2 rounded border border-slate-200">
+                                <span class="font-bold block text-slate-900 text-[9px] uppercase mb-0.5 tracking-wider">Terms And Conditions</span>
+                                <p class="text-[10px] text-slate-600 m-0">Thanks for doing business with us! Goods once sold are not returnable.</p>
+                            </div>
+                        </div>
+
+                        <div class="col-span-5 text-[10px]">
+                            <div class="border border-slate-300 rounded-lg overflow-hidden">
+                                <div class="flex justify-between p-1.5 border-b border-slate-200 bg-slate-50 items-center">
+                                    <span class="font-semibold text-slate-600">Sub Total:</span>
+                                    <span class="font-mono font-bold text-slate-900" x-text="formatNum(financials.subtotal) + ' ر.س'"></span>
+                                </div>
+                                <div class="flex justify-between p-1.5 border-b border-slate-200 text-amber-700 bg-amber-50/20 items-center">
+                                    <span class="font-semibold">Total Discount:</span>
+                                    <span class="font-mono font-bold" x-text="'-' + formatNum(financials.discountTotal) + ' ر.س'"></span>
+                                </div>
+                                <div class="flex justify-between p-1.5 border-b border-slate-200 bg-slate-50/50 items-center">
+                                    <span class="font-semibold text-slate-600">Taxable Gross:</span>
+                                    <span class="font-mono font-bold text-slate-900" x-text="formatNum(financials.taxableAmount) + ' ر.س'"></span>
+                                </div>
+                                <div class="flex justify-between p-1.5 border-b border-slate-200 items-center">
+                                    <span class="font-semibold text-slate-600">VAT @ 15%:</span>
+                                    <span class="font-mono font-bold text-slate-900" x-text="formatNum(financials.vatTotal) + ' ر.س'"></span>
+                                </div>
+                                <div class="flex justify-between p-1.5 bg-slate-900 text-white font-bold items-center">
+                                    <span>Total Due:</span>
+                                    <span class="font-mono" x-text="formatNum(financials.grandTotal) + ' ر.س'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="flex justify-between items-end px-2 text-[10px] pt-2">
+                            <div class="text-center w-56">
+                                <div class="border-b border-slate-400 h-6"></div>
+                                <div class="text-[9px] font-bold text-slate-500 uppercase mt-1">Authorized Signatory</div>
+                            </div>
+                            <div class="text-right text-[9px] text-slate-400 font-medium space-y-0.5 leading-snug">
+                                <div class="font-bold text-slate-800 text-xs mb-0.5 text-right" x-text="seller.nameAr || seller.nameEn"></div>
+                                <div x-text="seller.address"></div>
+                                <div>CR: <span x-text="seller.cr"></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+        </div><!-- /x-show invoice -->
+
+        <!-- RECEIPT VOUCHER SECTION -->
+        <div x-show="activeMode === 'receipt'" x-cloak>
+            <div x-data="receiptVoucher()" x-init="init()" class="container mx-auto px-4 pb-6 max-w-7xl">
+                
+                <header class="mb-6 border-b border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
+                    <div>
+                        <h1 class="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                            <span class="bg-amber-500 text-slate-950 px-2 py-0.5 rounded text-xl font-black">R</span>
+                            <span x-text="company.nameAr || 'Receipt Voucher'"></span>
+                            <span class="text-xs font-normal text-slate-400 block sm:inline sm:ml-2">Receipt Terminal</span>
+                        </h1>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="generatePDF()" class="bg-amber-500 hover:bg-amber-600 font-bold text-slate-950 px-5 py-2 rounded-lg text-sm shadow-lg transition duration-150 cursor-pointer">
+                            📥 Download PDF Receipt
+                        </button>
+                    </div>
+                </header>
+
+                <div class="grid lg:grid-cols-12 gap-6">
+                    <!-- Left Panel: Inputs -->
+                    <div class="lg:col-span-4 space-y-4 no-print">
+                        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl space-y-4">
+                            <h2 class="text-sm font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                🧾 Receipt Voucher Settings
+                            </h2>
+                            <div class="space-y-3">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Company Name (AR)</label>
+                                        <input type="text" x-model="company.nameAr" @input="updateState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500" dir="rtl">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Company Name (EN)</label>
+                                        <input type="text" x-model="company.nameEn" @input="updateState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Company Address</label>
+                                        <input type="text" x-model="company.address" @input="updateState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Company CR</label>
+                                        <input type="text" x-model="company.cr" @input="updateState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Receipt Number</label>
+                                        <input type="text" x-model="receiptNo" @input="updateState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Receipt Date</label>
+                                        <input type="text" x-model="displayDate" @input="updateState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Amount (S.R.)</label>
+                                        <input type="text" x-model="amountSR" @input="updateState()" placeholder="Riyals" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Amount (H.)</label>
+                                        <input type="text" x-model="amountHalala" @input="updateState()" placeholder="Halalas" maxlength="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    </div>
+                                </div>
+                                <div class="space-y-3 pt-2 border-t border-slate-700">
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Received from</label>
+                                        <input type="text" x-model="receivedFrom" @input="updateState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Amount in Words</label>
+                                        <input type="text" x-model="amountWords" @input="updateState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Bank/Cash</label>
+                                            <input type="text" x-model="bankName" @input="updateState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Against (Reason)</label>
+                                            <input type="text" x-model="against" @input="updateState()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: A4 Preview -->
+                    <div class="lg:col-span-8 flex flex-col items-center">
+                        <div id="receipt-print-target" class="bg-white text-slate-900 p-6 shadow-2xl rounded-sm overflow-x-auto select-text text-[11px]" style="width: 210mm; min-height: 297mm; box-sizing: border-box; font-family: Arial, sans-serif;">
+                            
+                            <!-- Company Header -->
+                            <div class="grid grid-cols-2 items-center border-b-2 border-slate-900 pb-3 mb-4 gap-2">
+                                <div class="text-left">
+                                    <h3 class="text-3xl font-black text-slate-900 tracking-tight m-0" style="font-weight: 900;" x-text="company.nameAr"></h3>
+                                </div>
+                                <div class="text-right whitespace-nowrap">
+                                    <h3 class="text-xl font-black text-slate-900 tracking-tight m-0" x-text="company.nameEn"></h3>
+                                </div>
+                            </div>
+
+                            <!-- Meta Row -->
+                            <div class="flex justify-between items-center border border-slate-300 rounded-lg p-3 bg-slate-50 mb-4">
+                                <div class="text-left">
+                                    <div class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Receipt No</div>
+                                    <div x-text="receiptNo" class="font-mono font-black text-slate-900 text-sm mt-1"></div>
+                                </div>
+                                <div class="text-center flex flex-col items-center">
+                                    <h1 class="text-3xl font-black tracking-widest text-slate-900 m-0 leading-tight">سند قبض</h1>
+                                    <h2 class="text-xs font-bold text-slate-500 tracking-wider uppercase m-0">Receipt Voucher</h2>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">التاريخ / Date</div>
+                                    <div class="font-bold text-slate-900 text-base mt-1" x-text="displayDate"></div>
+                                </div>
+                            </div>
+
+                            <!-- Receipt Body (expandable later) -->
+                            <div class="border border-slate-300 rounded-lg p-5 bg-slate-50 mb-4 flex flex-col items-start" style="min-height: 400px;">
+                                
+                                <!-- Amount Block -->
+                                <div class="flex items-end gap-1.5 mb-8 self-center">
+                                    <div class="flex flex-col">
+                                        <div class="text-lg font-bold text-black mb-1 leading-none flex justify-between px-1"><span>S. R.</span> <span>ريال</span></div>
+                                        <div class="bg-white border-2 border-slate-900 w-32 h-10 flex items-center justify-center font-bold text-slate-900 text-lg" x-text="amountSR"></div>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <div class="text-lg font-bold text-black mb-1 leading-none text-center">H. هـ.</div>
+                                        <div class="bg-white border-2 border-slate-900 w-12 h-10 flex items-center justify-center font-bold text-slate-900 text-lg" x-text="amountHalala"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Text Fields -->
+                                <div class="w-full space-y-6 text-[13px] mt-2">
+                                    
+                                    <!-- Received From -->
+                                    <div class="flex items-end gap-2 w-full">
+                                        <div class="whitespace-nowrap font-bold text-slate-900 text-[15px]">Received from :</div>
+                                        <div class="flex-grow border-b-2 border-dotted border-slate-400 text-center font-bold text-slate-900 px-2 min-w-0" style="font-size: 20px; min-height: 22px;" x-text="receivedFrom"></div>
+                                        <div class="whitespace-nowrap font-bold text-slate-900 text-[16px]" dir="rtl">استلمنا من السيد/السادة :</div>
+                                    </div>
+                                    
+                                    <!-- Amount -->
+                                    <div class="flex items-end gap-2 w-full">
+                                        <div class="whitespace-nowrap font-bold text-slate-900 text-[15px]">Amount :</div>
+                                        <div class="flex-grow border-b-2 border-dotted border-slate-400 text-center font-bold text-slate-900 px-2 min-w-0" style="font-size: 18px; min-height: 22px;" x-text="amountWords"></div>
+                                        <div class="whitespace-nowrap font-bold text-slate-900 text-[16px]" dir="rtl">مبلغ وقدره :</div>
+                                    </div>
+
+                                    <!-- Bank -->
+                                    <div class="flex items-end gap-2 w-full">
+                                        <div class="whitespace-nowrap font-bold text-slate-900 text-[15px]">Bank/Cash :</div>
+                                        <div class="flex-grow border-b-2 border-dotted border-slate-400 text-center font-bold text-slate-900 px-2 min-w-0" style="font-size: 15px; min-height: 22px;" x-text="bankName"></div>
+                                        <div class="whitespace-nowrap font-bold text-slate-900 text-[16px]" dir="rtl">بنك / نقداً :</div>
+                                    </div>
+
+                                    <!-- Against -->
+                                    <div class="flex items-end gap-2 w-full">
+                                        <div class="whitespace-nowrap font-bold text-slate-900 text-[15px]">Against :</div>
+                                        <div class="flex-grow border-b-2 border-dotted border-slate-400 text-center font-bold text-slate-900 px-2 min-w-0" style="font-size: 15px; min-height: 22px;" x-text="against"></div>
+                                        <div class="whitespace-nowrap font-bold text-slate-900 text-[16px]" dir="rtl">وذلك مقابل :</div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Signature and Company Footer -->
+                            <div class="flex justify-between items-end px-2 text-[10px] pt-2 mt-4">
+                                <div class="text-center w-56">
+                                    <div class="border-b border-slate-400 h-6"></div>
+                                    <div class="text-[9px] font-bold text-slate-500 uppercase mt-1">Signature</div>
+                                </div>
+                                <div class="text-right text-[9px] text-slate-400 font-medium space-y-0.5 leading-snug">
+                                    <div class="font-bold text-slate-800 text-xs mb-0.5 text-right" x-text="company.nameAr || company.nameEn"></div>
+                                    <div x-text="company.address"></div>
+                                    <template x-if="company.cr">
+                                        <div>CR: <span x-text="company.cr"></span></div>
+                                    </template>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div><!-- /x-show receipt -->
+
+    </div><!-- /activeMode wrapper -->
+
+    <script>
+        function invoiceSystem() {
+            return {
+                seller: {
+                    nameAr: 'مؤسسة ركن شرق الغربية',
+                    nameEn: 'East West Establishment',
+                    address: 'Al Khumrah, Jeddah',
+                    cr: '7054146241',
+                    trn: '311968663600003'
+                },
+                
+                buyer: {
+                    name: 'شركة مصنع الاتحاد الدولية للبيتومين',
+                    address: 'حي الربوة، اسم المدينة الرياض, الرمز البريدي 12839',
+                    cr: '40603003548',
+                    trn: '301038707800003'
+                },
+
+                systemGenerated: {
+                    invoiceNum: '',
+                    displayDate: '',
+                    displayTime: '',
+                    isoTimestamp: ''
+                },
+
+                items: [
+                    { name: '10*10*182 عمود بريمة', qty: 2, unit: 'Pcs', price: 2000.00, discount: 0.00 }
+                ],
+
+                financials: {
+                    subtotal: 0,
+                    discountTotal: 0,
+                    taxableAmount: 0,
+                    vatTotal: 0,
+                    grandTotal: 0
+                },
+
+                isValid: false,
+                base64Payload: '',
+
+                init() {
+                    const savedData = localStorage.getItem('invoice_system_state');
+                    if (savedData) {
+                        try {
+                            const parsed = JSON.parse(savedData);
+                            if (parsed.seller) this.seller = parsed.seller;
+                            if (parsed.buyer) this.buyer = parsed.buyer;
+                            if (parsed.items) this.items = parsed.items;
+                            if (parsed.invoiceNum) this.systemGenerated.invoiceNum = parsed.invoiceNum;
+                        } catch (e) {
+                            console.error('Failed to parse saved state');
+                        }
+                    }
+
+                    const runtimeDate = new Date();
+                    const trackingRandomSeed = Math.floor(10000 + Math.random() * 90000);
+                    
+                    if (!this.systemGenerated.invoiceNum) {
+                        this.systemGenerated.invoiceNum = `INV-2026-${trackingRandomSeed}`;
+                    }
+                    this.systemGenerated.displayDate = runtimeDate.toLocaleDateString('en-GB'); 
+                    this.systemGenerated.displayTime = runtimeDate.toLocaleTimeString('en-US', { hour12: false });
+                    this.systemGenerated.isoTimestamp = runtimeDate.toISOString().replace(/\.\d{3}/, '');
+
+                    this.updateInvoiceState();
+                },
+
+                saveState() {
+                    localStorage.setItem('invoice_system_state', JSON.stringify({
+                        seller: this.seller,
+                        buyer: this.buyer,
+                        items: this.items,
+                        invoiceNum: this.systemGenerated.invoiceNum
+                    }));
+                },
+
+                addItem() {
+                    this.items.push({ name: '', qty: 1, unit: 'Pcs', price: 0.00, discount: 0.00 });
+                    this.updateInvoiceState();
+                },
+
+                removeItem(idx) {
+                    this.items.splice(idx, 1);
+                    this.updateInvoiceState();
+                },
+
+                calculateBalances() {
+                    let totalGross = 0;
+                    let totalDiscount = 0;
+
+                    this.items.forEach(row => {
+                        const count = parseInt(row.qty) || 0;
+                        const baselineVal = parseFloat(row.price) || 0;
+                        const lineDiscount = parseFloat(row.discount) || 0;
+
+                        totalGross += (count * baselineVal);
+                        totalDiscount += lineDiscount;
+                    });
+
+                    this.financials.subtotal = totalGross;
+                    this.financials.discountTotal = totalDiscount;
+                    
+                    this.financials.taxableAmount = Math.max(0, totalGross - totalDiscount);
+                    this.financials.vatTotal = this.financials.taxableAmount * 0.15;
+                    this.financials.grandTotal = this.financials.taxableAmount * 1.15;
+                },
+
+                updateInvoiceState() {
+                    this.calculateBalances();
+                    this.saveState();
+
+                    if (!this.buyer.name || this.items.length === 0) {
+                        this.isValid = false;
+                        return;
+                    }
+
+                    try {
+                        const tag1Seller    = this.toTlvSegment(1, this.seller.nameAr || this.seller.nameEn);
+                        const tag2VatIndex  = this.toTlvSegment(2, this.seller.trn);
+                        
+                        // Parse manually entered date back into timestamp context if valid, else fall back to generation state
+                        let targetTimestamp = this.systemGenerated.isoTimestamp;
+                        if(this.systemGenerated.displayDate) {
+                            const dateParts = this.systemGenerated.displayDate.split('/');
+                            if(dateParts.length === 3) {
+                                const parsedDate = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${this.systemGenerated.displayTime}`);
+                                if(!isNaN(parsedDate.getTime())) {
+                                    targetTimestamp = parsedDate.toISOString().replace(/\.\d{3}/, '');
+                                }
+                            }
+                        }
+
+                        const tag3Timestamp = this.toTlvSegment(3, targetTimestamp);
+                        const tag4GrandSum  = this.toTlvSegment(4, this.financials.grandTotal.toFixed(2));
+                        const tag5VatSum    = this.toTlvSegment(5, this.financials.vatTotal.toFixed(2));
+
+                        const consolidatedStream = this.combineByteStreams([tag1Seller, tag2VatIndex, tag3Timestamp, tag4GrandSum, tag5VatSum]);
+                        this.base64Payload = btoa(String.fromCharCode.apply(null, consolidatedStream));
+                        this.isValid = true;
+
+                        this.$nextTick(() => {
+                            const nodeArea = document.getElementById('zatca-embedded-qr-node');
+                            if (nodeArea) {
+                                nodeArea.innerHTML = '';
+                                new QRCode(nodeArea, {
+                                    text: this.base64Payload,
+                                    width: 105,
+                                    height: 105,
+                                    colorDark: "#000000",
+                                    colorLight: "#ffffff",
+                                    correctLevel: QRCode.CorrectLevel.M
+                                });
+                            }
+                        });
+
+                    } catch (crashErr) {
+                        console.error("Internal processing loop fault: ", crashErr);
+                        this.isValid = false;
+                    }
+                },
+
+                toTlvSegment(tagIndex, textVal) {
+                    const encodedValueBytes = new TextEncoder().encode(textVal); 
+                    const segmentBuffer = new Uint8Array(2 + encodedValueBytes.length);
+                    segmentBuffer[0] = tagIndex;
+                    segmentBuffer[1] = encodedValueBytes.length;
+                    segmentBuffer.set(encodedValueBytes, 2);
+                    return segmentBuffer;
+                },
+
+                combineByteStreams(arraysList) {
+                    let spatialAllocationSum = arraysList.reduce((acc, current) => acc + current.length, 0);
+                    let compiledResultStream = new Uint8Array(spatialAllocationSum);
+                    let computationalOffset = 0;
+                    for (let arrayNode of arraysList) {
+                        compiledResultStream.set(arrayNode, computationalOffset);
+                        computationalOffset += arrayNode.length;
+                    }
+                    return compiledResultStream;
+                },
+
+                formatNum(numericValue) {
+                    return parseFloat(numericValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                },
+
+                generatePDF() {
+                    const sanitizedBuyerName = (this.buyer.name || 'Client').replace(/[/\\?%*:|"<>]/g, '-').trim();
+                    const originalDocumentTitle = document.title;
+                    
+                    document.title = `${sanitizedBuyerName} - ${this.systemGenerated.invoiceNum}`;
+                    window.print();
+                    
+                    setTimeout(() => {
+                        document.title = originalDocumentTitle;
+                    }, 50);
+                },
+
+                convertNumberToWords(num) {
+                    const value = Math.floor(num);
+                    if (value === 0) return 'Zero';
+                    
+                    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+                    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+                    const scales = ['', 'Thousand', 'Million'];
+
+                    function convertGroup(n) {
+                        let word = '';
+                        if (n >= 100) {
+                            word += ones[Math.floor(n / 100)] + ' Hundred ';
+                            n %= 100;
+                        }
+                        if (n >= 20) {
+                            word += tens[Math.floor(n / 10)] + ' ';
+                            n %= 10;
+                        }
+                        if (n > 0) {
+                            word += ones[n] + ' ';
+                        }
+                        return word.trim();
+                    }
+
+                    let tempNum = value;
+                    let wordResult = '';
+                    let scaleIndex = 0;
+
+                    while (tempNum > 0) {
+                        let chunk = tempNum % 1000;
+                        if (chunk > 0) {
+                            let chunkWords = convertGroup(chunk);
+                            wordResult = chunkWords + (scales[scaleIndex] ? ' ' + scales[scaleIndex] : '') + ' ' + wordResult;
+                        }
+                        tempNum = Math.floor(tempNum / 1000);
+                        scaleIndex++;
+                    }
+
+                    return wordResult.trim();
+                }
+            }
+        }
+
+        function receiptVoucher() {
+            return {
+                company: { nameAr: '', nameEn: '', address: '', cr: '' },
+                receiptNo: '',
+                displayDate: '',
+                amountSR: '',
+                amountHalala: '',
+                receivedFrom: '',
+                amountWords: '',
+                bankName: '',
+                against: '',
+
+                init() {
+                    const savedData = localStorage.getItem('receipt_voucher_state');
+                    if (savedData) {
+                        try {
+                            const parsed = JSON.parse(savedData);
+                            if (parsed.company) this.company = { ...this.company, ...parsed.company };
+                            if (parsed.receiptNo) this.receiptNo = parsed.receiptNo;
+                            if (parsed.amountSR) this.amountSR = parsed.amountSR;
+                            if (parsed.amountHalala) this.amountHalala = parsed.amountHalala;
+                            if (parsed.receivedFrom) this.receivedFrom = parsed.receivedFrom;
+                            if (parsed.amountWords) this.amountWords = parsed.amountWords;
+                            if (parsed.bankName) this.bankName = parsed.bankName;
+                            if (parsed.against) this.against = parsed.against;
+                        } catch (e) {
+                            console.error('Failed to parse receipt state');
+                        }
+                    }
+
+                    // Generate English date
+                    const now = new Date();
+                    this.displayDate = now.toLocaleDateString('en-GB');
+
+                    if (!this.receiptNo) {
+                        const seed = Math.floor(10000 + Math.random() * 90000);
+                        this.receiptNo = 'RV-2026-' + seed;
+                    }
+
+                    this.updateState();
+                },
+
+                saveState() {
+                    localStorage.setItem('receipt_voucher_state', JSON.stringify({
+                        company: this.company,
+                        receiptNo: this.receiptNo,
+                        amountSR: this.amountSR,
+                        amountHalala: this.amountHalala,
+                        receivedFrom: this.receivedFrom,
+                        amountWords: this.amountWords,
+                        bankName: this.bankName,
+                        against: this.against
+                    }));
+                },
+
+                updateState() {
+                    let words = '';
+                    if (this.amountSR && !isNaN(this.amountSR)) {
+                        words += this.numberToArabicWords(parseInt(this.amountSR)) + ' ريال سعودي';
+                    }
+                    if (this.amountHalala && !isNaN(this.amountHalala)) {
+                        const halalaNum = parseInt(this.amountHalala);
+                        if (halalaNum > 0) {
+                            if (words !== '') words += ' و ';
+                            words += this.numberToArabicWords(halalaNum) + ' هللة';
+                        }
+                    }
+                    
+                    if (words !== '') {
+                        this.amountWords = words + ' فقط لا غير';
+                    } else if (this.amountSR === '' && this.amountHalala === '') {
+                        this.amountWords = '';
+                    }
+                    this.saveState();
+                },
+
+                numberToArabicWords(number) {
+                    if (number === 0) return 'صفر';
+                    const ones = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
+                    const teens = ['عشر', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
+                    const tens = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+                    const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+
+                    const convertLessThanOneThousand = (n) => {
+                        let word = '';
+                        if (n >= 100) {
+                            word += hundreds[Math.floor(n / 100)];
+                            n %= 100;
+                            if (n > 0) word += ' و ';
+                        }
+                        if (n >= 11 && n <= 19) return word + teens[n - 10];
+                        if (n === 10) return word + 'عشرة';
+                        if (n >= 20) {
+                            let one = n % 10;
+                            if (one > 0) word += ones[one] + ' و ';
+                            word += tens[Math.floor(n / 10)];
+                            return word;
+                        }
+                        if (n > 0) word += ones[n];
+                        return word;
+                    };
+
+                    let wordResult = '';
+                    if (number >= 1000) {
+                        let thousandsValue = Math.floor(number / 1000);
+                        if (thousandsValue === 1) wordResult += 'ألف';
+                        else if (thousandsValue === 2) wordResult += 'ألفان';
+                        else if (thousandsValue >= 3 && thousandsValue <= 10) wordResult += convertLessThanOneThousand(thousandsValue) + ' آلاف';
+                        else wordResult += convertLessThanOneThousand(thousandsValue) + ' ألف';
+                        
+                        number %= 1000;
+                        if (number > 0) wordResult += ' و ';
+                    }
+                    if (number > 0) wordResult += convertLessThanOneThousand(number);
+                    return wordResult;
+                },
+
+                generatePDF() {
+                    const originalTitle = document.title;
+                    const receiptNo = (this.receiptNo || 'Receipt').trim();
+                    const receivedFrom = (this.receivedFrom || 'Unknown').trim();
+
+                    const safeReceiptNo = receiptNo.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-');
+                    const safeReceivedFrom = receivedFrom.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-');
+
+                    document.title = `${safeReceiptNo} - ${safeReceivedFrom}`;
+                    window.print();
+
+                    setTimeout(() => {
+                        document.title = originalTitle;
+                    }, 50);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
